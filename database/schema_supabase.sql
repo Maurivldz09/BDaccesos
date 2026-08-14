@@ -3,7 +3,7 @@
 -- SISTEMA DE CONTROL DE ACCESO RESIDENCIAL
 -- ============================================================================
 
--- 1. LIMPIEZA PREVIA (Opcional)
+-- 1. LIMPIEZA PREVIA DE TABLAS Y POLÍTICAS
 DROP TABLE IF EXISTS accesos CASCADE;
 DROP TABLE IF EXISTS residentes CASCADE;
 DROP TABLE IF EXISTS visitantes CASCADE;
@@ -52,7 +52,10 @@ ALTER TABLE residentes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE visitantes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE accesos ENABLE ROW LEVEL SECURITY;
 
--- Políticas de Acceso Completo (Lectura, Escritura, Edición, Eliminación)
+DROP POLICY IF EXISTS "Permitir todo en residentes" ON residentes;
+DROP POLICY IF EXISTS "Permitir todo en visitantes" ON visitantes;
+DROP POLICY IF EXISTS "Permitir todo en accesos" ON accesos;
+
 CREATE POLICY "Permitir todo en residentes" ON residentes FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Permitir todo en visitantes" ON visitantes FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Permitir todo en accesos" ON accesos FOR ALL USING (true) WITH CHECK (true);
