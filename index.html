@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Control de Acceso Residencial - Caseta de Seguridad</title>
+  <!-- Google Fonts: Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="styles.css?v=3.0">
+</head>
+<body>
+
+  <div class="app-container">
+    
+    <!-- SIDEBAR NAVIGATION -->
+    <aside class="sidebar">
+      <div>
+        <div class="brand">
+          <div class="brand-logo">🛡️</div>
+          <div class="brand-text">
+            <h2>Caseta Control</h2>
+            <span>Gestión Residencial</span>
+          </div>
+        </div>
+
+        <ul class="nav-menu">
+          <li class="nav-item active" data-tab="dashboard">
+            <span class="icon">🏠</span>
+            <span>Dashboard</span>
+          </li>
+          <li class="nav-item" data-tab="nuevo-registro">
+            <span class="icon">📝</span>
+            <span>Registrar Entrada</span>
+          </li>
+          <li class="nav-item" data-tab="accesos">
+            <span class="icon">📋</span>
+            <span>Bitácora de Accesos</span>
+          </li>
+          <li class="nav-item" data-tab="residentes">
+            <span class="icon">🏘️</span>
+            <span>Gestión Residentes</span>
+          </li>
+          <li class="nav-item" data-tab="visitantes">
+            <span class="icon">👤</span>
+            <span>Catálogo Visitantes</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="connection-status connected" id="connection-status-indicator">
+          <span class="status-dot"></span> <span id="connection-status-text">MySQL Conectado</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="main-content">
+
+      <!-- TOP HEADER BAR -->
+      <header class="header-bar">
+        <div class="header-title">
+          <h1>Control de Acceso Residencial</h1>
+          <p>Monitoreo y administración en tiempo real de entradas y salidas del fraccionamiento</p>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-secondary" onclick="app.syncAll()">
+            <span>🔄</span> Sincronizar Datos
+          </button>
+          <button class="btn btn-primary" onclick="app.exportarCSV()">
+            <span>📥</span> Exportar Bitácora CSV
+          </button>
+        </div>
+      </header>
+
+      <!-- ALERTA DE CONEXIÓN XAMPP -->
+      <div id="alert-db-error" style="display: none;" class="card-panel error-banner">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
+          <div>
+            <h3 style="color: var(--accent-rose); font-size: 1.1rem; margin-bottom: 0.25rem;">⚠️ No se pudo conectar a la Base de Datos MySQL en XAMPP</h3>
+            <p style="font-size: 0.9rem; color: var(--text-muted);">
+              Asegúrate de haber encendido <strong>MySQL</strong> en XAMPP, haber colocado la carpeta en <code>C:\xampp\htdocs\Practica BD</code> e importado el archivo <code>database/schema.sql</code> en <strong>phpMyAdmin</strong>.
+            </p>
+          </div>
+          <button class="btn btn-secondary" onclick="app.syncAll()">Reintentar Conexión</button>
+        </div>
+      </div>
+
+      <!-- STATS SUMMARY METRICS -->
+      <div class="grid-stats">
+        <div class="stat-card">
+          <div class="stat-info">
+            <h3>En Fraccionamiento</h3>
+            <div class="number" id="stat-dentro">0</div>
+          </div>
+          <div class="stat-icon icon-green">🚗</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-info">
+            <h3>Salidas Hoy</h3>
+            <div class="number" id="stat-salidos">0</div>
+          </div>
+          <div class="stat-icon icon-indigo">🚪</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-info">
+            <h3>Total Accesos Hoy</h3>
+            <div class="number" id="stat-total-hoy">0</div>
+          </div>
+          <div class="stat-icon icon-cyan">📊</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-info">
+            <h3>Total Residentes</h3>
+            <div class="number" id="stat-residentes">0</div>
+          </div>
+          <div class="stat-icon icon-amber">🏘️</div>
+        </div>
+      </div>
+
+      <!-- ================= TAB 1: DASHBOARD ================= -->
+      <section id="tab-dashboard" class="tab-content active">
+        <div class="card-panel">
+          <div class="card-header">
+            <h2><span>📋</span> Últimos Accesos Registrados</h2>
+            <button class="btn btn-secondary" style="font-size: 0.85rem;" onclick="app.irATab('accesos')">Ver Bitácora Completa →</button>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Folio</th>
+                  <th>Visitante / ID</th>
+                  <th>Casa / Residente Destino</th>
+                  <th>Motivo</th>
+                  <th>Hora Entrada</th>
+                  <th>Hora Salida</th>
+                  <th>Estado</th>
+                  <th>Acción</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-dashboard-recent-body">
+                <!-- Populated via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= TAB 2: NUEVO REGISTRO ================= -->
+      <section id="tab-nuevo-registro" class="tab-content">
+        <div class="card-panel">
+          <div class="card-header">
+            <h2><span>📝</span> Registrar Entrada de Visitante en Caseta</h2>
+          </div>
+
+          <form id="form-registro" onsubmit="app.guardarRegistro(event)">
+            <div class="form-grid">
+              
+              <div class="form-group">
+                <label for="input-nombre-visitante">Nombre Completo del Visitante *</label>
+                <input type="text" id="input-nombre-visitante" class="form-control" placeholder="Ej. Ana Patricia Gómez" required>
+              </div>
+
+              <div class="form-group">
+                <label for="input-identificacion">Identificación (INE / Licencia) *</label>
+                <input type="text" id="input-identificacion" class="form-control" placeholder="Ej. INE-84729104" required>
+              </div>
+
+              <div class="form-group">
+                <label for="input-telefono-visitante">Teléfono de Contacto</label>
+                <input type="tel" id="input-telefono-visitante" class="form-control" placeholder="Ej. 555-111-2233">
+              </div>
+
+              <div class="form-group">
+                <label for="select-residente">Casa / Depto Destino (Residente) *</label>
+                <select id="select-residente" class="form-control" required>
+                  <!-- Populated dynamically -->
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="select-tipo-visitante">Tipo de Visitante</label>
+                <select id="select-tipo-visitante" class="form-control">
+                  <option value="Visita General" selected>Visita General</option>
+                  <option value="Familiar">Familiar</option>
+                  <option value="Proveedor">Proveedor / Paquetería</option>
+                  <option value="Servicio/Mantenimiento">Servicio / Mantenimiento</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="input-motivo">Motivo de la Visita *</label>
+                <input type="text" id="input-motivo" class="form-control" placeholder="Ej. Comida familiar, Entrega de paquete" required>
+              </div>
+
+              <div class="form-group">
+                <label for="input-fecha-entrada">Fecha y Hora de Entrada *</label>
+                <input type="datetime-local" id="input-fecha-entrada" class="form-control" required>
+              </div>
+
+              <div class="form-group">
+                <label for="input-fecha-salida">Fecha y Hora de Salida (Opcional si ya se retiró)</label>
+                <input type="datetime-local" id="input-fecha-salida" class="form-control">
+              </div>
+
+              <div class="form-group full-width">
+                <label for="input-observaciones">Observaciones / Datos del Vehículo (Placas, Modelo, Marca)</label>
+                <input type="text" id="input-observaciones" class="form-control" placeholder="Ej. Auto Nissan Sentra Gris Placas ABC-123">
+              </div>
+
+            </div>
+
+            <div style="margin-top: 1.5rem; display: flex; gap: 1rem;">
+              <button type="submit" class="btn btn-primary">
+                <span>💾</span> Registrar Entrada en Base de Datos
+              </button>
+              <button type="reset" class="btn btn-secondary">Limpiar Formulario</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- ================= TAB 3: BITÁCORA DE ACCESOS ================= -->
+      <section id="tab-accesos" class="tab-content">
+        <div class="card-panel">
+          <div class="card-header">
+            <h2><span>📋</span> Bitácora General de Accesos (Entradas y Salidas)</h2>
+            <button class="btn btn-primary" style="font-size: 0.85rem;" onclick="app.exportarCSV()">
+              <span>📥</span> Descargar Reporte CSV
+            </button>
+          </div>
+
+          <!-- FILTROS -->
+          <div class="filter-bar">
+            <div class="search-box">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="input-busqueda" class="form-control" placeholder="Buscar por visitante, número de casa, residente o motivo..." oninput="app.filtrarAccesos()">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0; min-width: 200px;">
+              <select id="filtro-estado" class="form-control" onchange="app.filtrarAccesos()">
+                <option value="TODOS">Todos los Estados</option>
+                <option value="EN FRACCIONAMIENTO">En Fraccionamiento</option>
+                <option value="SALIDO">Salida Registrada</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- TABLA DE REGISTROS -->
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Folio</th>
+                  <th>Visitante / Documento</th>
+                  <th>Casa / Residente Anfitrión</th>
+                  <th>Motivo</th>
+                  <th>Hora Entrada</th>
+                  <th>Hora Salida</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-accesos-body">
+                <!-- JS populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= TAB 4: RESIDENTES ================= -->
+      <section id="tab-residentes" class="tab-content">
+        <div class="card-panel">
+          <div class="card-header">
+            <h2><span>🏘️</span> Catálogo de Residentes</h2>
+            <button class="btn btn-primary" onclick="app.abrirModalResidente()"><span>➕</span> Nuevo Residente</button>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Número de Casa / Depto</th>
+                  <th>Nombre del Residente</th>
+                  <th>Teléfono</th>
+                  <th>Correo Electrónico</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-residentes-body">
+                <!-- JS populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= TAB 5: VISITANTES ================= -->
+      <section id="tab-visitantes" class="tab-content">
+        <div class="card-panel">
+          <div class="card-header">
+            <h2><span>👤</span> Catálogo de Visitantes Frecuentes</h2>
+            <button class="btn btn-primary" onclick="app.abrirModalVisitante()"><span>➕</span> Nuevo Visitante</button>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Nombre Completo</th>
+                  <th>Identificación (INE/Licencia)</th>
+                  <th>Teléfono</th>
+                  <th>Tipo de Visitante</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-visitantes-body">
+                <!-- JS populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- MODAL EDITAR ACCESO -->
+  <div id="modal-editar-acceso" class="modal-backdrop" style="display: none;">
+    <div class="card-panel modal-card">
+      <div class="card-header">
+        <h2><span>✏️</span> Editar Registro de Acceso</h2>
+        <button class="btn btn-secondary" onclick="app.cerrarModales()" style="padding: 0.3rem 0.6rem;">✕</button>
+      </div>
+      <form id="form-editar-acceso" onsubmit="app.guardarEdicionAcceso(event)">
+        <input type="hidden" id="edit-acceso-id">
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label>Motivo de Visita</label>
+          <input type="text" id="edit-acceso-motivo" class="form-control" required>
+        </div>
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label>Fecha y Hora de Salida</label>
+          <input type="datetime-local" id="edit-acceso-fecha-salida" class="form-control">
+        </div>
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label>Estado</label>
+          <select id="edit-acceso-estado" class="form-control">
+            <option value="EN FRACCIONAMIENTO">EN FRACCIONAMIENTO</option>
+            <option value="SALIDO">SALIDO</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+          <label>Observaciones</label>
+          <input type="text" id="edit-acceso-observaciones" class="form-control">
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+          <button type="button" class="btn btn-secondary" onclick="app.cerrarModales()">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL RESIDENTE (CREAR / EDITAR) -->
+  <div id="modal-residente" class="modal-backdrop" style="display: none;">
+    <div class="card-panel modal-card">
+      <div class="card-header">
+        <h2 id="modal-residente-titulo"><span>🏘️</span> Registrar Nuevo Residente</h2>
+        <button class="btn btn-secondary" onclick="app.cerrarModales()" style="padding: 0.3rem 0.6rem;">✕</button>
+      </div>
+      <form id="form-residente" onsubmit="app.guardarResidente(event)">
+        <input type="hidden" id="residente-id">
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label>Número de Casa o Depto *</label>
+          <input type="text" id="residente-casa" class="form-control" placeholder="Ej. Casa 101 / Depto 201" required>
+        </div>
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label>Nombre Completo del Residente *</label>
+          <input type="text" id="residente-nombre" class="form-control" placeholder="Ej. Carlos Mendoza García" required>
+        </div>
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label>Teléfono</label>
+          <input type="tel" id="residente-telefono" class="form-control" placeholder="Ej. 555-123-4567">
+        </div>
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+          <label>Correo Electrónico</label>
+          <input type="email" id="residente-correo" class="form-control" placeholder="Ej. residente@email.com">
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+          <button type="button" class="btn btn-secondary" onclick="app.cerrarModales()">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar Residente</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL VISITANTE (CREAR / EDITAR) -->
+  <div id="modal-visitante" class="modal-backdrop" style="display: none;">
+    <div class="card-panel modal-card">
+      <div class="card-header">
+        <h2 id="modal-visitante-titulo"><span>👤</span> Registrar Nuevo Visitante</h2>
+        <button class="btn btn-secondary" onclick="app.cerrarModales()" style="padding: 0.3rem 0.6rem;">✕</button>
+      </div>
+      <form id="form-visitante" onsubmit="app.guardarVisitante(event)">
+        <input type="hidden" id="visitante-id">
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label>Nombre Completo del Visitante *</label>
+          <input type="text" id="visitante-nombre" class="form-control" placeholder="Ej. Ana Patricia Gómez" required>
+        </div>
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label>Identificación (INE / Licencia) *</label>
+          <input type="text" id="visitante-identificacion" class="form-control" placeholder="Ej. INE-84729104" required>
+        </div>
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label>Teléfono de Contacto</label>
+          <input type="tel" id="visitante-telefono" class="form-control" placeholder="Ej. 555-111-2233">
+        </div>
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+          <label>Tipo de Visitante</label>
+          <select id="visitante-tipo" class="form-control">
+            <option value="Visita General">Visita General</option>
+            <option value="Familiar">Familiar</option>
+            <option value="Proveedor">Proveedor / Paquetería</option>
+            <option value="Servicio/Mantenimiento">Servicio / Mantenimiento</option>
+          </select>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+          <button type="button" class="btn btn-secondary" onclick="app.cerrarModales()">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar Visitante</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Script de la aplicación -->
+  <script src="app.js"></script>
+</body>
+</html>
