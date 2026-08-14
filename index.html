@@ -8,8 +8,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Supabase JS Client CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="styles.css?v=3.0">
+  <link rel="stylesheet" href="styles.css?v=4.0">
 </head>
 <body>
 
@@ -51,8 +53,8 @@
       </div>
 
       <div class="sidebar-footer">
-        <div class="connection-status connected" id="connection-status-indicator">
-          <span class="status-dot"></span> <span id="connection-status-text">MySQL Conectado</span>
+        <div class="connection-status connected" id="connection-status-indicator" style="cursor: pointer;" onclick="app.abrirModalSupabase()">
+          <span class="status-dot"></span> <span id="connection-status-text">Cargando Conexión...</span>
         </div>
       </div>
     </aside>
@@ -67,8 +69,11 @@
           <p>Monitoreo y administración en tiempo real de entradas y salidas del fraccionamiento</p>
         </div>
         <div class="header-actions">
+          <button class="btn btn-secondary" onclick="app.abrirModalSupabase()">
+            <span>⚙️</span> Conectar Supabase (Nube)
+          </button>
           <button class="btn btn-secondary" onclick="app.syncAll()">
-            <span>🔄</span> Sincronizar Datos
+            <span>🔄</span> Sincronizar
           </button>
           <button class="btn btn-primary" onclick="app.exportarCSV()">
             <span>📥</span> Exportar Bitácora CSV
@@ -76,16 +81,16 @@
         </div>
       </header>
 
-      <!-- ALERTA DE CONEXIÓN XAMPP -->
+      <!-- ALERTA DE CONFIGURACIÓN SUPABASE -->
       <div id="alert-db-error" style="display: none;" class="card-panel error-banner">
-        <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
           <div>
-            <h3 style="color: var(--accent-rose); font-size: 1.1rem; margin-bottom: 0.25rem;">⚠️ No se pudo conectar a la Base de Datos MySQL en XAMPP</h3>
-            <p style="font-size: 0.9rem; color: var(--text-muted);">
-              Asegúrate de haber encendido <strong>MySQL</strong> en XAMPP, haber colocado la carpeta en <code>C:\xampp\htdocs\Practica BD</code> e importado el archivo <code>database/schema.sql</code> en <strong>phpMyAdmin</strong>.
+            <h3 style="color: var(--accent-amber); font-size: 1.05rem; margin-bottom: 0.25rem;">☁️ Conexión a Base de Datos en la Nube Supabase</h3>
+            <p style="font-size: 0.88rem; color: var(--text-muted);">
+              Ingresa tu <strong>Supabase URL</strong> y <strong>Anon Key</strong> para conectar directamente con tu base de datos PostgreSQL en la nube.
             </p>
           </div>
-          <button class="btn btn-secondary" onclick="app.syncAll()">Reintentar Conexión</button>
+          <button class="btn btn-primary" onclick="app.abrirModalSupabase()">Configurar Credenciales Nube</button>
         </div>
       </div>
 
@@ -331,6 +336,39 @@
       </section>
 
     </main>
+  </div>
+
+  <!-- MODAL DE CONFIGURACIÓN DE SUPABASE -->
+  <div id="modal-supabase" class="modal-backdrop" style="display: none;">
+    <div class="card-panel modal-card" style="max-width: 580px;">
+      <div class="card-header">
+        <h2><span>☁️</span> Configuración de Base de Datos Supabase (Nube)</h2>
+        <button class="btn btn-secondary" onclick="app.cerrarModales()" style="padding: 0.3rem 0.6rem;">✕</button>
+      </div>
+      <form id="form-supabase" onsubmit="app.guardarConfigSupabase(event)">
+        <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+          Ingresa las credenciales de tu proyecto de Supabase (Project Settings → API). Esto conectará tu app con PostgreSQL en la nube 24/7.
+        </p>
+
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label>Project URL (SUPABASE_URL) *</label>
+          <input type="url" id="input-supabase-url" class="form-control" placeholder="Ej. https://xyzwhatever.supabase.co" required>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+          <label>API Key publica (SUPABASE_ANON_KEY) *</label>
+          <input type="text" id="input-supabase-key" class="form-control" placeholder="Ej. eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." required>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.75rem;">
+          <button type="button" class="btn btn-secondary" onclick="app.limpiarConfigSupabase()">Limpiar / Usar Demo</button>
+          <div style="display: flex; gap: 0.5rem;">
+            <button type="button" class="btn btn-secondary" onclick="app.cerrarModales()">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Guardar y Conectar</button>
+          </div>
+        </div>
+      </form>
+    </div>
   </div>
 
   <!-- MODAL EDITAR ACCESO -->
